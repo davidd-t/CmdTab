@@ -1,0 +1,23 @@
+// docs: https://help.apple.com/xcode/mac/11.4/#/itcaec37c2a6
+
+#include "base.xcconfig"
+
+// Local build: ad-hoc signing, no Apple Developer account needed.
+// To keep macOS permissions across rebuilds, run scripts/codesign/setup_local.sh once and set this to: Local Self-Signed
+CODE_SIGN_IDENTITY = -
+CODE_SIGN_INJECT_BASE_ENTITLEMENTS = NO
+OTHER_CODE_SIGN_FLAGS = --timestamp=none --deep --options runtime
+SWIFT_COMPILATION_MODE = wholemodule
+SWIFT_OPTIMIZATION_LEVEL = -Osize // -16% binary, -8% download; measured +2% on fuzzy search, the only CPU-bound Swift path (most of its time is in system libraries)
+GCC_OPTIMIZATION_LEVEL = s // optimize for size; Xcode default for Release but explicit
+LLVM_LTO = YES_THIN // ThinLTO: cross-module DCE + inlining across all static-linked .o (host + ShortcutRecorder)
+STRIP_SWIFT_SYMBOLS = YES // explicit; Xcode default for Release
+DEBUG_INFORMATION_FORMAT = dwarf-with-dsym
+CLANG_DEBUG_INFORMATION_LEVEL = line-tables-only // shrinks dSYM for clang/Obj-C; no Swift equivalent ships in Xcode
+DEPLOYMENT_POSTPROCESSING = YES
+COPY_PHASE_STRIP = YES
+STRIP_INSTALLED_PRODUCT = YES
+STRIP_STYLE = all
+
+// Per-developer overrides (CODE_SIGN_IDENTITY, …).
+#include? "local.xcconfig"
