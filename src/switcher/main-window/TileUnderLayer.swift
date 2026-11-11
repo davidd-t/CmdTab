@@ -33,7 +33,7 @@ class TileUnderLayer: CALayer {
             height: hf.height
         )
         highlightLayer.frame = rect
-        highlightLayer.cornerRadius = Appearance.cellCornerRadius
+        highlightLayer.cornerRadius = Appearance.highlightCornerRadius
         highlightLayer.backgroundColor = (isFocused
             ? Appearance.highlightFocusedBackgroundColor
             : Appearance.highlightHoveredBackgroundColor).cgColor

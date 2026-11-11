@@ -18,7 +18,7 @@ class Appearance {
 
     // size: constants
     static let maxHeightOnScreen = CGFloat(0.8)
-    static let interCellPadding = CGFloat(1)
+    static let interCellPadding = CGFloat(6)
     static let intraCellPadding = CGFloat(5)
     static let appIconLabelSpacing = CGFloat(2)
 
@@ -26,15 +26,27 @@ class Appearance {
     static var fontColor = NSColor.red
     static var imagesShadowColor = NSColor.red // for icon, thumbnail and windowless images
     static var material = LegacyMaterial.ultraDark
-    static var highlightBorderWidth = CGFloat(3)
+    static var highlightBorderWidth = CGFloat(2)
+    /// Corner radius of the selection ring; follows what the ring wraps (see `TileView.highlightFrame`).
+    static var highlightCornerRadius = CGFloat(12)
 
     // theme: constants
     static var enablePanelShadow = true
-    // Windows 11-style selection: a single black outline, no tint.
+    // Selection is a thin accent ring with no tint; in the Thumbnails style it wraps the thumbnail
+    // only, with a small gap, so the window itself reads as the selected thing.
+    static let thumbnailCornerRadius = CGFloat(6)
+    static let highlightRingGap = CGFloat(2)
+    /// Titles and status icons of tiles that are neither selected nor hovered are dimmed to this.
+    static let unfocusedTitleOpacity = CGFloat(0.55)
+    private static var neutralInk: NSColor { currentTheme == .dark ? .white : .black }
     static var highlightFocusedBackgroundColor: NSColor { get { NSColor.clear } }
-    static var highlightHoveredBackgroundColor: NSColor { get { NSColor.white.withAlphaComponent(0.08) } }
-    static var highlightFocusedBorderColor: NSColor { get { NSColor(calibratedWhite: 0.3, alpha: 1) } }
-    static var highlightHoveredBorderColor: NSColor { get { NSColor(calibratedWhite: 0.5, alpha: 0.6) } }
+    static var highlightHoveredBackgroundColor: NSColor { get { NSColor.clear } }
+    static var highlightFocusedBorderColor: NSColor { get { NSColor.controlAccentColor } }
+    static var highlightHoveredBorderColor: NSColor { get { neutralInk.withAlphaComponent(0.35) } }
+    /// Hairline around each thumbnail, so dark windows keep an edge against a dark panel.
+    static var thumbnailBorderColor: NSColor { get { neutralInk.withAlphaComponent(0.14) } }
+    /// Hairline around the frosted panel (Liquid Glass draws its own rim).
+    static var panelBorderColor: NSColor { get { neutralInk.withAlphaComponent(0.12) } }
     static var searchMatchHighlightColor: NSColor { get { NSColor.systemYellow.withAlphaComponent(0.5) } }
     static var searchMatchForegroundColor: NSColor { get { NSColor(calibratedWhite: 0.12, alpha: 1) } }
 
@@ -74,13 +86,16 @@ class Appearance {
         } else {
             thumbnailsSize(isHorizontalScreen, size)
         }
-        // Squarer corners for the panel and the tiles, like the Windows 11 switcher.
-        windowCornerRadius = 10
-        cellCornerRadius = 10
+        // Concentric corners: panel > tile > thumbnail (`thumbnailCornerRadius`).
+        windowCornerRadius = 20
+        cellCornerRadius = 12
     }
 
     private static func updateTheme() {
-        highlightBorderWidth = currentStyle == .titles ? 3 : 4
+        highlightBorderWidth = 2
+        highlightCornerRadius = currentStyle == .thumbnails
+            ? thumbnailCornerRadius + highlightRingGap + highlightBorderWidth
+            : cellCornerRadius
         if currentTheme == .dark {
             darkTheme()
         } else {
@@ -96,15 +111,9 @@ class Appearance {
 
     private static func thumbnailsSize(_ isHorizontalScreen: Bool, _ size: AppearanceSizePreference) {
         hideThumbnails = false
-        windowPadding = 18
-        windowCornerRadius = 23
-        cellCornerRadius = 10
+        // Tiles already carry `edgeInsetsSize` of their own, so the panel adds only a slim margin.
+        windowPadding = 10
         edgeInsetsSize = 12
-        if #available(macOS 26.0, *) {
-            windowPadding = 28
-            windowCornerRadius = 43
-            cellCornerRadius = 18
-        }
         switch size {
             case .small:
                 rowsCount = isHorizontalScreen ? 5 : 8

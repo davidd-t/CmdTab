@@ -37,6 +37,9 @@ class FrostedGlassEffectView: NSVisualEffectView, EffectView {
     func updateAppearance(cornerRadius: CGFloat) {
         material = Appearance.material
         updateRoundedCorners(cornerRadius)
+        layer?.cornerRadius = cornerRadius
+        layer?.borderWidth = 1
+        layer?.borderColor = Appearance.panelBorderColor.cgColor
     }
 
     /// using layer!.cornerRadius works but the corners are aliased; this custom approach gives smooth rounded corners

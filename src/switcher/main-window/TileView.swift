@@ -69,11 +69,17 @@ class TileView: FlippedView {
     }
 
     /// The frame used by TileUnderLayer to position the highlight rectangle.
-    /// In appIcons style, it covers appIcon + edge insets. Otherwise, it covers the full cell.
+    /// In appIcons style, it covers appIcon + edge insets. In thumbnails style, it rings the
+    /// thumbnail with a small gap. Otherwise, it covers the full cell.
     var highlightFrame: CGRect {
-        if Preferences.effectiveAppearanceStyle(SwitcherSession.activeShortcutIndex) == .appIcons {
+        let style = Preferences.effectiveAppearanceStyle(SwitcherSession.activeShortcutIndex)
+        if style == .appIcons {
             return CGRect(x: 0, y: 0,
                           width: frame.width, height: appIcon.frame.height + Appearance.edgeInsetsSize * 2)
+        }
+        if style == .thumbnails, !thumbnail.isHidden, !thumbnail.frame.isEmpty {
+            let outset = Appearance.highlightRingGap + Appearance.highlightBorderWidth
+            return thumbnail.frame.insetBy(dx: -outset, dy: -outset)
         }
         return CGRect(origin: .zero, size: frame.size)
     }
@@ -86,13 +92,25 @@ class TileView: FlippedView {
         updateSizes(newHeight)
         updatePositions()
         applySearchHighlight()
+        let session = SwitcherSession.current
+        updateTitleEmphasis(index == (session?.selectedIndex ?? 0) || index == session?.hoveredIndex)
+    }
+
+    /// Only the selected and hovered tiles show their title and status icons at full strength.
+    /// The App Icons style shows a single label at a time, so nothing is dimmed there.
+    private func updateTitleEmphasis(_ isEmphasized: Bool) {
+        let isAppIcons = Preferences.effectiveAppearanceStyle(SwitcherSession.activeShortcutIndex) == .appIcons
+        let opacity = isEmphasized || isAppIcons ? 1 : Appearance.unfocusedTitleOpacity
+        assignIfDifferent(&label.alphaValue, opacity)
+        assignIfDifferent(&statusIcons.alphaValue, opacity)
     }
 
     func drawHighlight() {
+        let session = SwitcherSession.current
+        let isFocused = indexInRecycledViews == (session?.selectedIndex ?? 0)
+        let isHovered = indexInRecycledViews == session?.hoveredIndex
+        updateTitleEmphasis(isFocused || isHovered)
         if Preferences.effectiveAppearanceStyle(SwitcherSession.activeShortcutIndex) == .appIcons {
-            let session = SwitcherSession.current
-            let isFocused = indexInRecycledViews == (session?.selectedIndex ?? 0)
-            let isHovered = indexInRecycledViews == session?.hoveredIndex
             let shouldBeVisible = isFocused || isHovered
             // Update the frame BEFORE unhiding. `applyCurrentStyle()` already set
             // `label.isHidden = true` in `updateRecycledCellWithNewContent`; the label's frame is
@@ -125,7 +143,12 @@ class TileView: FlippedView {
     }
 
     private func setupSharedSubviews() {
-        thumbnail.masksToBounds = false // let thumbnail shadows show
+        // rounded corners need clipping, which also clips a layer shadow: the hairline border
+        // (see `applyShadows`) separates the thumbnail from the panel instead
+        thumbnail.masksToBounds = true
+        thumbnail.cornerRadius = Appearance.thumbnailCornerRadius
+        thumbnail.cornerCurve = .continuous
+        thumbnail.borderWidth = 1
         appIconHighlight.isHidden = true
         layer!.addSublayer(appIconHighlight)
         layer!.addSublayer(appIcon)
@@ -170,7 +193,7 @@ class TileView: FlippedView {
     }
 
     private func applyShadows() {
-        thumbnail.applyShadow(TileView.makeThumbnailShadow(Appearance.imagesShadowColor))
+        thumbnail.borderColor = Appearance.thumbnailBorderColor.cgColor
         appIcon.applyShadow(TileView.makeAppIconShadow(Appearance.imagesShadowColor))
         dockLabelIcon.shadow = TileView.makeShadow(Appearance.imagesShadowColor)
     }
@@ -682,15 +705,6 @@ class TileView: FlippedView {
         shadow.shadowColor = color.withAlphaComponent(0.4)
         shadow.shadowOffset = NSSize(width: 0.1, height: 1)
         shadow.shadowBlurRadius = 2
-        return shadow
-    }
-
-    static func makeThumbnailShadow(_ color: NSColor?) -> NSShadow? {
-        guard let color else { return nil }
-        let shadow = NSShadow()
-        shadow.shadowColor = color.withAlphaComponent(0.4)
-        shadow.shadowOffset = NSSize(width: 0.8, height: 2.2)
-        shadow.shadowBlurRadius = 3
         return shadow
     }
 
